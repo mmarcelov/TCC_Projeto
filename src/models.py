@@ -7,6 +7,8 @@ from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report
 )
+import shap
+import matplotlib.pyplot as plt
 
 PROCESSED_DIR = Path(__file__).resolve().parent.parent / "data" / "processed"
 
@@ -82,28 +84,94 @@ def treinar_svm(X_train, y_train, amostra: int = 50000):
     return modelo
 
 
+def analisar_importancia(modelo, X_train, nome: str, usar_shap: bool = True):
+    """Extrai a importância das variáveis: nativa do modelo + SHAP (mais robusto)."""
+    importancias = pd.Series(modelo.feature_importances_, index=X_train.columns)
+    importancias = importancias.sort_values(ascending=False)
+
+    print(f"\nTop 15 variáveis mais importantes ({nome} - importância nativa):")
+    print(importancias.head(15))
+
+    if usar_shap:
+        # Reduzido de 5000 para 1000 — RF com 200 árvores profundas é lento pro SHAP
+        amostra = X_train.sample(n=1000, random_state=42)
+        explainer = shap.TreeExplainer(modelo)
+        shap_values = explainer.shap_values(amostra)
+
+        plt.figure()
+        shap.summary_plot(shap_values, amostra, show=False, max_display=15)
+        plt.tight_layout()
+        plt.savefig(f"reports/figures/shap_{nome.lower().replace(' ', '_')}.png", dpi=150)
+        print(f"\nGráfico SHAP salvo em reports/figures/shap_{nome.lower().replace(' ', '_')}.png")
+
+
+def remover_variaveis_gravidade(X: pd.DataFrame) -> pd.DataFrame:
+    """Remove indicadores de gravidade/atendimento coletados DURANTE a internação
+    (HOSPITAL, UTI, SUPORT_VEN), que representam vazamento conceitual de informação
+    para um modelo de risco calculado no momento da admissão."""
+    colunas_remover = ["HOSPITAL", "UTI"] + [c for c in X.columns if c.startswith("SUPORT_VEN_")]
+    print(f"Removendo {len(colunas_remover)} colunas de gravidade/atendimento: {colunas_remover}")
+    return X.drop(columns=colunas_remover)
+
+
+def comparar_resultados(resultados: list):
+    """Monta uma tabela comparativa entre versão completa e versão sem leakage."""
+    df_comp = pd.DataFrame(resultados)
+    print("\n" + "=" * 60)
+    print("COMPARATIVO: modelo completo vs. sem variáveis de gravidade")
+    print("=" * 60)
+    print(df_comp.to_string(index=False))
+    return df_comp
+
 if __name__ == "__main__":
     RODAR_RF = True
     RODAR_XGB = True
-    RODAR_SVM = False  # deixar False por enquanto — é o mais lento, roda por último
+    RODAR_SVM = False
+    RODAR_IMPORTANCIA = False       # já validamos isso, pode deixar False agora
+    RODAR_ABLACAO = True            # <-- nova etapa
     # ─────────────────────────────────────────────────────────
 
     X_train, X_test, y_train, y_test = carregar_dados_processados()
     print(f"Treino: {X_train.shape} | Teste: {X_test.shape}")
 
     resultados = []
+    modelos_treinados = {}
 
     if RODAR_RF:
         rf = treinar_random_forest(X_train, y_train)
-        resultados.append(avaliar_modelo("Random Forest", rf, X_test, y_test))
+        resultados.append(avaliar_modelo("Random Forest (completo)", rf, X_test, y_test))
+        modelos_treinados["Random Forest"] = rf
 
     if RODAR_XGB:
         xgb = treinar_xgboost(X_train, y_train)
-        resultados.append(avaliar_modelo("XGBoost", xgb, X_test, y_test))
+        resultados.append(avaliar_modelo("XGBoost (completo)", xgb, X_test, y_test))
+        modelos_treinados["XGBoost"] = xgb
 
     if RODAR_SVM:
         svm = treinar_svm(X_train, y_train)
-        resultados.append(avaliar_modelo("SVM", svm, X_test, y_test))
+        resultados.append(avaliar_modelo("SVM (completo)", svm, X_test, y_test))
 
-    print("\n\nResumo comparativo:")
-    print(pd.DataFrame(resultados))
+    if RODAR_IMPORTANCIA:
+        for nome, modelo in modelos_treinados.items():
+            analisar_importancia(modelo, X_train, nome)
+
+    if RODAR_ABLACAO:
+        print("\n\n" + "#" * 60)
+        print("ESTUDO DE ABLAÇÃO — removendo HOSPITAL, UTI, SUPORT_VEN")
+        print("#" * 60)
+
+        X_train_reduzido = remover_variaveis_gravidade(X_train)
+        X_test_reduzido = remover_variaveis_gravidade(X_test)
+
+        rf_reduzido = treinar_random_forest(X_train_reduzido, y_train)
+        resultados.append(avaliar_modelo("Random Forest (sem gravidade)", rf_reduzido, X_test_reduzido, y_test))
+
+        xgb_reduzido = treinar_xgboost(X_train_reduzido, y_train)
+        resultados.append(avaliar_modelo("XGBoost (sem gravidade)", xgb_reduzido, X_test_reduzido, y_test))
+
+        # Importância das variáveis na versão sem leakage — aqui sim os sintomas
+        # e comorbidades devem aparecer com peso mais relevante
+        analisar_importancia(rf_reduzido, X_train_reduzido, "Random Forest (sem gravidade)", usar_shap=False)
+        analisar_importancia(xgb_reduzido, X_train_reduzido, "XGBoost (sem gravidade)", usar_shap=False)
+
+    comparar_resultados(resultados)
