@@ -124,11 +124,11 @@ def comparar_resultados(resultados: list):
     return df_comp
 
 if __name__ == "__main__":
-    RODAR_RF = True
-    RODAR_XGB = True
-    RODAR_SVM = False
-    RODAR_IMPORTANCIA = False       # já validamos isso, pode deixar False agora
-    RODAR_ABLACAO = True            # <-- nova etapa
+    RODAR_RF = False              # já temos o resultado completo documentado
+    RODAR_XGB = False             # idem
+    RODAR_SVM = False             # não usado (SVM roda só dentro da ablação)
+    RODAR_IMPORTANCIA = False     # já rodado
+    RODAR_ABLACAO = True          # mantém True — é aqui que o SVM está
     # ─────────────────────────────────────────────────────────
 
     X_train, X_test, y_train, y_test = carregar_dados_processados()
@@ -173,5 +173,9 @@ if __name__ == "__main__":
         # e comorbidades devem aparecer com peso mais relevante
         analisar_importancia(rf_reduzido, X_train_reduzido, "Random Forest (sem gravidade)", usar_shap=False)
         analisar_importancia(xgb_reduzido, X_train_reduzido, "XGBoost (sem gravidade)", usar_shap=False)
+
+        # SVM só na versão sem leakage, que é o resultado que efetivamente importa
+        svm_reduzido = treinar_svm(X_train_reduzido, y_train)
+        resultados.append(avaliar_modelo("SVM (sem gravidade)", svm_reduzido, X_test_reduzido, y_test))
 
     comparar_resultados(resultados)
