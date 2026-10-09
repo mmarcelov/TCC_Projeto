@@ -322,8 +322,8 @@ if __name__ == "__main__":
     RODAR_PILOTO_SVM = False
     RODAR_EQUIPARIDADE = True
 
-    CONFIG_SEM_GRAVIDADE = True
-    CONFIG_COMPLETA = False
+    CONFIG_SEM_GRAVIDADE = False
+    CONFIG_COMPLETA = True
     # ─────────────────────────────────────────────────────────
 
     X_train, X_test, y_train, y_test = carregar_dados_processados()
