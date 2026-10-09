@@ -1,0 +1,22 @@
+Treino: (916455, 51) | Teste: (229114, 51)
+Amostra de treino: 50000 registros de 916455
+ProporþÒo do alvo na amostra:
+TARGET
+0    0.66544
+1    0.33456
+Name: proportion, dtype: float64
+Hash da amostra: ee971fa098f9 | semente: 42
+Removendo 6 colunas de gravidade/atendimento: ['HOSPITAL', 'UTI', 'SUPORT_VEN_1', 'SUPORT_VEN_2', 'SUPORT_VEN_3', 'SUPORT_VEN_9']
+Removendo 6 colunas de gravidade/atendimento: ['HOSPITAL', 'UTI', 'SUPORT_VEN_1', 'SUPORT_VEN_2', 'SUPORT_VEN_3', 'SUPORT_VEN_9']
+
+[Piloto ù configuraþÒo E5: sem_gravidade]
+
+============================================================
+PILOTO DE CUSTO DA SVM ù ESTIMATIVA, N├O ╔ RESULTADO EXPERIMENTAL
+Nenhuma mÚtrica Ú calculada; y_test nÒo Ú utilizado.
+============================================================
+Piloto: treino 10000 | prediþÒo em 5000 linhas do teste
+Vetores de suporte no piloto: 7462
+Tempo piloto -> treino: 3.8 s | prediþÒo: 2.6 s
+Estimativa de treino com 50000 registros: 1.6 a 8.0 min (regra n▓ a n│)
+Estimativa de prediþÒo em 229114 registros: ~9.9 min (regra ~ n_treino x n_teste)
