@@ -1,0 +1,36 @@
+Validação concluída: 15 execuções principais com status 'ok' em 5 experimentos;
+semente, tamanhos de treino/teste, atributos e amostras consistentes; matrizes conferem com as métricas.
+Critério de seleção: por (experimento, algoritmo), execução 'ok' mais recente (data_hora).
+
+Tabela consolidada:
+experimento        modelo  n_treino  n_teste  n_atributos  acuracia  precisao  recall     f1  tempo_treino_s  tempo_predicao_s  tempo_total_s     tn    fp    fn    tp
+         E4 Random Forest     50000   229114           51    0.7787    0.6569  0.7085 0.6817             0.9               0.8            1.7 124091 28368 22345 54310
+         E4       XGBoost     50000   229114           51    0.7676    0.6360  0.7137 0.6726             0.5               0.2            0.7 121148 31311 21946 54709
+         E4           SVM     50000   229114           51    0.7811    0.6607  0.7107 0.6848           217.8             440.4          658.2 124478 27981 22179 54476
+         E5 Random Forest     50000   229114           45    0.6656    0.5002  0.6669 0.5717             0.9               0.8            1.7 101379 51080 25531 51124
+         E5       XGBoost     50000   229114           45    0.6583    0.4918  0.6452 0.5582             0.5               0.2            0.7 101358 51101 27194 49461
+         E5           SVM     50000   229114           45    0.6583    0.4924  0.6993 0.5779           259.4             622.3          881.7  97208 55251 23048 53607
+         E6 Random Forest     25000   229114           51    0.7781    0.6599  0.6950 0.6770             0.5               0.8            1.3 124998 27461 23383 53272
+         E6       XGBoost     25000   229114           51    0.7636    0.6339  0.6947 0.6629             0.3               0.2            0.5 121709 30750 23405 53250
+         E6           SVM     25000   229114           51    0.7810    0.6624  0.7045 0.6828            35.5             221.7          257.2 124932 27527 22651 54004
+         E7 Random Forest     75000   229114           51    0.7795    0.6576  0.7112 0.6834             1.3               0.8            2.1 124072 28387 22135 54520
+         E7       XGBoost     75000   229114           51    0.7699    0.6386  0.7191 0.6765             0.5               0.2            0.7 121263 31196 21531 55124
+         E7           SVM     75000   229114           51    0.7823    0.6635  0.7090 0.6855           522.8             671.2         1194.0 124893 27566 22307 54348
+         E8 Random Forest    100000   229114           51    0.7778    0.6528  0.7172 0.6835             2.0               0.9            2.9 123221 29238 21678 54977
+         E8       XGBoost    100000   229114           51    0.7715    0.6391  0.7284 0.6808             0.5               0.2            0.7 120924 31535 20821 55834
+         E8           SVM    100000   229114           51    0.7814    0.6604  0.7138 0.6861           998.8             888.3         1887.1 124316 28143 21937 54718
+
+Tabelas:
+  tabela salva: reports\resultados\consolidado_experimentos.csv
+  tabela salva: reports\resultados\tabela_tamanho_amostra.csv
+  tabela salva: reports\resultados\tabela_E4_vs_E5.csv
+
+Análise A — tamanho da amostra (E6 → E4 → E7 → E8): figuras em reports\figures\amostras/
+  salvo: reports\figures\amostras\A1_f1_vs_tamanho_treino.png
+  salvo: reports\figures\amostras\A2_metricas_vs_tamanho_treino_painel.png
+  salvo: reports\figures\amostras\A3_tempos_vs_tamanho_treino.png
+  salvo: reports\figures\amostras\A4_custo_total_vs_tamanho_treino.png
+  salvo: reports\figures\amostras\A5_matriz_metricas_algoritmo_tamanho.png
+  salvo: reports\figures\amostras\A6_matrizes_confusao_algoritmo_tamanho.png
+
+Concluído: 3 tabelas CSV + 6 figuras PNG.
