@@ -1,0 +1,118 @@
+Treino completo: (916455, 51) | Teste: (229114, 51)
+Hash do conjunto de teste: ea1d1b0329ce (deve ser o mesmo em todas as execuções)
+
+Reconstruindo a amostra do E4 (50.000) com a função original de models.py...
+Amostra de treino: 50000 registros de 916455
+Proporção do alvo na amostra:
+TARGET
+0    0.66544
+1    0.33456
+Name: proportion, dtype: float64
+Hash da amostra de 50 mil confere com o E4: ee971fa098f9
+
+Verificando as amostras...
+  E6: 25000 registros, sem duplicatas, alinhados, 51 atributos, proporção ok
+  E4: 50000 registros, sem duplicatas, alinhados, 51 atributos, proporção ok
+  E7: 75000 registros, sem duplicatas, alinhados, 51 atributos, proporção ok
+  E8: 100000 registros, sem duplicatas, alinhados, 51 atributos, proporção ok
+Aninhamento:
+  E6 ⊂ E4: ok
+  E4 ⊂ E7: ok
+  E7 ⊂ E8: ok
+
+Resumo das amostras (E6 ⊂ E4 ⊂ E7 ⊂ E8):
+amostra      n         hash  n_cura  n_obito  pct_obito  dif_vs_treino_pp
+     E6  25000 4ec92425018e   16636     8364     33.456            -0.001
+     E4  50000 ee971fa098f9   33272    16728     33.456            -0.001
+     E7  75000 26fc93c62291   49908    25092     33.456            -0.001
+     E8 100000 0eb33db8bae4   66544    33456     33.456            -0.001
+Proporção de óbitos no treino completo: 33.457%
+
+############################################################
+E6 — completa_25k | treino 25000 | teste 229114 | atributos 51
+hash da amostra 4ec92425018e | semente 42 | run_id 20261015_170436
+arquivo de resultados: amostras_E6_25000.csv
+############################################################
+
+>>> E6 | Random Forest: treinando com 25000 registros...
+    treino concluído em 0.5 s
+  predição: 20000/229114
+  predição: 40000/229114
+  predição: 60000/229114
+  predição: 80000/229114
+  predição: 100000/229114
+  predição: 120000/229114
+  predição: 140000/229114
+  predição: 160000/229114
+  predição: 180000/229114
+  predição: 200000/229114
+  predição: 220000/229114
+  predição: 229114/229114
+
+
+==================================================
+Resultados: Random Forest [E6]
+==================================================
+Acurácia:  0.7781
+Precisão:  0.6599
+Recall:    0.6950
+F1-score:  0.6770
+
+Matriz de confusão:
+[[124998  27461]
+ [ 23383  53272]]
+
+Relatório completo:
+              precision    recall  f1-score   support
+
+           0       0.84      0.82      0.83    152459
+           1       0.66      0.69      0.68     76655
+
+    accuracy                           0.78    229114
+   macro avg       0.75      0.76      0.75    229114
+weighted avg       0.78      0.78      0.78    229114
+
+
+>>> E6 | XGBoost: treinando com 25000 registros...
+    treino concluído em 0.3 s
+  predição: 20000/229114
+  predição: 40000/229114
+  predição: 60000/229114
+  predição: 80000/229114
+  predição: 100000/229114
+  predição: 120000/229114
+  predição: 140000/229114
+  predição: 160000/229114
+  predição: 180000/229114
+  predição: 200000/229114
+  predição: 220000/229114
+  predição: 229114/229114
+
+
+==================================================
+Resultados: XGBoost [E6]
+==================================================
+Acurácia:  0.7636
+Precisão:  0.6339
+Recall:    0.6947
+F1-score:  0.6629
+
+Matriz de confusão:
+[[121709  30750]
+ [ 23405  53250]]
+
+Relatório completo:
+              precision    recall  f1-score   support
+
+           0       0.84      0.80      0.82    152459
+           1       0.63      0.69      0.66     76655
+
+    accuracy                           0.76    229114
+   macro avg       0.74      0.75      0.74    229114
+weighted avg       0.77      0.76      0.77    229114
+
+
+Resumo E6 (última execução de cada modelo):
+experimento        modelo  n_treino  n_teste  n_atributos  tempo_treino_s  tempo_predicao_s  acuracia  precisao   recall       f1 status
+         E6 Random Forest     25000   229114           51             0.5               0.8  0.778084  0.659854 0.694958 0.676951     ok
+         E6       XGBoost     25000   229114           51             0.3               0.2  0.763633  0.633929 0.694671 0.662911     ok
