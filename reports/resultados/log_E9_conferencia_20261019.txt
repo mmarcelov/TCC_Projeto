@@ -1,0 +1,13 @@
+Linhas no arquivo: 3 (ok: 3; com erro: 0)
+  Random Forest: hiperparâmetros idênticos aos do E8
+  XGBoost: hiperparâmetros idênticos aos do E8
+  SVM: hiperparâmetros idênticos aos do E8 (exceto valores que dependem dos dados)
+  SVM — gamma efetivo: E8 = 0.04411134903640256 | E9 = 0.04861474124411917; vetores de suporte: E8 = 53505 | E9 = 72394
+
+Resultados do E9 (última execução 'ok' de cada modelo):
+       modelo  n_treino  n_teste  n_atributos  n_atributos_modelo  tempo_treino_s  tempo_predicao_s  acuracia  precisao  recall     f1
+Random Forest    100000   229114           45                  45             1.8               0.8    0.6658    0.5004  0.6724 0.5738
+      XGBoost    100000   229114           45                  45             0.6               0.2    0.6632    0.4975  0.6653 0.5693
+          SVM    100000   229114           45                  93          1227.0            1255.0    0.6609    0.4952  0.6962 0.5787
+
+Conferência concluída: sem inconsistências.

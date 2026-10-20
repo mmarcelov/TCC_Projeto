@@ -34,8 +34,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 RESULTADOS_DIR = BASE_DIR / "reports" / "resultados"
 FIG_AMOSTRAS = BASE_DIR / "reports" / "figures" / "amostras"
 FIG_COMPARATIVOS = BASE_DIR / "reports" / "figures" / "comparativos"  # E4 × E5 (não toca nos SHAP)
+FIG_E9 = BASE_DIR / "reports" / "figures" / "comparativos_E9"        # análise C (E4, E5, E8, E9)
 
-ESPERADO = {"semente": 42, "n_teste": 229114, "hash_e4": "ee971fa098f9"}
+ESPERADO = {
+    "semente": 42, "n_teste": 229114, "n_cura": 152459, "n_obito": 76655,
+    "hash_e4": "ee971fa098f9",   # amostra de 50 mil registros (E4 e E5)
+    "hash_e8": "0eb33db8bae4",   # amostra de 100 mil registros (E8 e E9)
+}
+COLUNAS_REMOVIDAS = ["HOSPITAL", "UTI", "SUPORT_VEN_1", "SUPORT_VEN_2", "SUPORT_VEN_3", "SUPORT_VEN_9"]
 
 CONFIGURACOES = {
     "completa": "Completa",
@@ -52,12 +58,19 @@ EXPERIMENTOS = {
     "E6": {"arquivo": "amostras_E6_25000.csv", "n_treino": 25000, "n_atributos": 51, "config": "completa"},
     "E7": {"arquivo": "amostras_E7_75000.csv", "n_treino": 75000, "n_atributos": 51, "config": "completa"},
     "E8": {"arquivo": "amostras_E8_100000.csv", "n_treino": 100000, "n_atributos": 51, "config": "completa"},
+    "E9": {"arquivo": "amostras_E9_100000_45atributos.csv", "n_treino": 100000, "n_atributos": 45, "config": "reduzida"},
 }
 PAR_ATRIBUTOS = ("E4", "E5")  # análise B
 SERIE_TAMANHO = sorted(      # análise A: E6, E4, E7, E8
     (e for e, c in EXPERIMENTOS.items() if c["config"] == "completa"),
     key=lambda e: EXPERIMENTOS[e]["n_treino"],
 )
+
+# Análise C: grade 2 × 2 (tamanho × atributos)
+EXPERIMENTOS_C = ["E4", "E5", "E8", "E9"]
+PAR_CUSTO_C = ("E8", "E9")  # custo computacional com a maior amostra
+# Contrastes (minuendo, subtraendo): diferença = minuendo − subtraendo
+CONTRASTES = [("E4", "E5"), ("E8", "E9"), ("E8", "E4"), ("E9", "E5")]
 
 MODELOS = ["Random Forest", "XGBoost", "SVM"]
 METRICAS = {"acuracia": "Acurácia", "precisao": "Precisão", "recall": "Recall", "f1": "F1-score"}
@@ -69,6 +82,8 @@ COR_MODELO = {"Random Forest": "#0072B2", "XGBoost": "#E69F00", "SVM": "#009E73"
 MARCADOR_MODELO = {"Random Forest": "o", "XGBoost": "s", "SVM": "^"}
 COR_EXP = {"E4": "#4D4D4D", "E5": "#CC79A7"}
 MARCADOR_EXP = {"E4": "o", "E5": "s"}
+# Análise C: cor = conjunto de atributos (as mesmas de E4/E5); hachura = maior amostra (100 mil)
+COR_C = {"E4": "#4D4D4D", "E5": "#CC79A7", "E8": "#4D4D4D", "E9": "#CC79A7"}
 SLUG_MODELO = {"Random Forest": "random_forest", "XGBoost": "xgboost", "SVM": "svm"}
 ROTULOS_CLASSES = ["Cura (0)", "Óbito (1)"]
 CLASSES_CURTAS = ["Cura", "Óbito"]
@@ -180,6 +195,9 @@ def validar(sel: pd.DataFrame) -> None:
     for exp in PAR_ATRIBUTOS:
         if hash_exp.get(exp) != ESPERADO["hash_e4"]:
             problemas.append(f"{exp}: hash_amostra {hash_exp.get(exp)} difere do registrado para a amostra de 50 mil ({ESPERADO['hash_e4']}).")
+    for exp in ("E8", "E9"):
+        if hash_exp.get(exp) != ESPERADO["hash_e8"]:
+            problemas.append(f"{exp}: hash_amostra {hash_exp.get(exp)} difere do registrado para a amostra de 100 mil ({ESPERADO['hash_e8']}).")
     for e1, e2 in itertools.combinations(hash_exp, 2):
         mesmo_n = EXPERIMENTOS[e1]["n_treino"] == EXPERIMENTOS[e2]["n_treino"]
         mesmo_hash = hash_exp[e1] == hash_exp[e2]
@@ -195,6 +213,42 @@ def validar(sel: pd.DataFrame) -> None:
     if problemas:
         raise ErroValidacao("\n".join(f"  - {p}" for p in problemas))
 
+def validar_atributos(sel: pd.DataFrame) -> list:
+    """Atributos (nomes e ordem): iguais entre experimentos da mesma configuração; a reduzida
+    deve ser a completa menos exatamente as 6 colunas previstas. Devolve avisos."""
+    problemas, avisos, listas = [], [], {}
+    for exp, cfg in EXPERIMENTOS.items():
+        s = sel[sel["experimento"] == exp]
+        if "atributos" not in s.columns or s["atributos"].isna().any():
+            avisos.append(f"{exp}: lista de atributos ausente no CSV; conferência de nomes e ordem ignorada.")
+            continue
+        distintas = set(s["atributos"])
+        if len(distintas) != 1:
+            problemas.append(f"{exp}: os três algoritmos registraram listas de atributos diferentes.")
+            continue
+        lista = next(iter(distintas)).split("; ")
+        if len(lista) != cfg["n_atributos"]:
+            problemas.append(f"{exp}: lista com {len(lista)} atributos; esperado {cfg['n_atributos']}.")
+        listas[exp] = lista
+
+    por_config = {}
+    for exp, lista in listas.items():
+        por_config.setdefault(EXPERIMENTOS[exp]["config"], {})[exp] = lista
+    for config, d in por_config.items():
+        if len({tuple(l) for l in d.values()}) != 1:
+            problemas.append(f"Configuração '{config}': {sorted(d)} não têm a mesma lista de atributos (nomes e ordem).")
+
+    if "completa" in por_config and "reduzida" in por_config:
+        completa = next(iter(por_config["completa"].values()))
+        reduzida = next(iter(por_config["reduzida"].values()))
+        removidas = [c for c in completa if c not in reduzida]
+        if sorted(removidas) != sorted(COLUNAS_REMOVIDAS):
+            problemas.append(f"Colunas removidas na reduzida: {removidas}; esperado {COLUNAS_REMOVIDAS}.")
+        if reduzida != [c for c in completa if c not in COLUNAS_REMOVIDAS]:
+            problemas.append("A configuração reduzida não é a completa sem as 6 colunas (nomes ou ordem).")
+    if problemas:
+        raise ErroValidacao("\n".join(f"  - {p}" for p in problemas))
+    return avisos
 
 def extrair_matrizes(sel: pd.DataFrame) -> dict:
     """Reconstrói as matrizes 2x2 [[TN, FP], [FN, TP]] (classes 0 = cura, 1 = óbito)."""
@@ -231,6 +285,9 @@ def validar_matrizes(sel: pd.DataFrame, matrizes: dict) -> tuple:
                 problemas.append(f"{exp} / {modelo}: {chave} do CSV = {linha[chave]:.6f}, mas a matriz resulta em {valor:.6f}.")
     if len(totais_reais) != 1:
         problemas.append(f"As matrizes não têm os mesmos totais por classe real: {sorted(totais_reais)}.")
+    elif next(iter(totais_reais)) != (ESPERADO["n_cura"], ESPERADO["n_obito"]):
+        problemas.append(f"Totais por classe real {sorted(totais_reais)}; esperado "
+                         f"({ESPERADO['n_cura']} cura, {ESPERADO['n_obito']} óbito).")
     if problemas:
         raise ErroValidacao("\n".join(f"  - {p}" for p in problemas))
     return next(iter(totais_reais))
@@ -296,6 +353,58 @@ def tabela_atributos(tabela: pd.DataFrame) -> pd.DataFrame:
         linhas.append(linha)
     return pd.DataFrame(linhas)
 
+def _descrever_contraste(a: str, b: str) -> str:
+    """Texto do contraste a − b, derivado do cadastro de experimentos."""
+    ca, cb = EXPERIMENTOS[a], EXPERIMENTOS[b]
+    if ca["n_treino"] == cb["n_treino"]:
+        return (f"Retirada de atributos com {_milhar(ca['n_treino'])} registros: "
+                f"{a} ({ca['n_atributos']} atributos) − {b} ({cb['n_atributos']} atributos)")
+    return (f"Mudança do tamanho de treinamento com {ca['n_atributos']} atributos: "
+            f"{a} ({_milhar(ca['n_treino'])} registros) − {b} ({_milhar(cb['n_treino'])} registros)")
+
+
+def tabela_par(tabela: pd.DataFrame, minuendo: str, subtraendo: str) -> pd.DataFrame:
+    """Dois experimentos por algoritmo. Diferenças = minuendo − subtraendo, em pontos percentuais."""
+    idx = tabela.set_index(["modelo", "experimento"])
+    descricao = _descrever_contraste(minuendo, subtraendo)
+    linhas = []
+    for modelo in MODELOS:
+        linha = {"algoritmo": modelo, "comparacao": f"{minuendo} − {subtraendo}", "descricao": descricao}
+        for m in METRICAS:
+            a, b = idx.loc[(modelo, minuendo), m], idx.loc[(modelo, subtraendo), m]
+            linha.update({f"{m}_{minuendo}": a, f"{m}_{subtraendo}": b,
+                          f"{m}_diferenca_pp_{minuendo}_menos_{subtraendo}": (a - b) * 100})
+        for c in ("tempo_treino_s", "tempo_predicao_s", "tempo_total_s"):
+            linha.update({f"{c}_{minuendo}": idx.loc[(modelo, minuendo), c],
+                          f"{c}_{subtraendo}": idx.loc[(modelo, subtraendo), c]})
+        ta, tb = idx.loc[(modelo, minuendo), "tempo_total_s"], idx.loc[(modelo, subtraendo), "tempo_total_s"]
+        linha[f"razao_tempo_total_{minuendo}_sobre_{subtraendo}"] = ta / tb if tb > 0 else np.nan
+        linhas.append(linha)
+    return pd.DataFrame(linhas)
+
+
+def tabela_comparativo(tabela: pd.DataFrame) -> pd.DataFrame:
+    """Os quatro contrastes da grade 2 × 2 (formato longo: um contraste por algoritmo)."""
+    idx = tabela.set_index(["modelo", "experimento"])
+    linhas = []
+    for minuendo, subtraendo in CONTRASTES:
+        for modelo in MODELOS:
+            ma, sb = idx.loc[(modelo, minuendo)], idx.loc[(modelo, subtraendo)]
+            linha = {
+                "algoritmo": modelo, "contraste": f"{minuendo} − {subtraendo}",
+                "descricao": _descrever_contraste(minuendo, subtraendo),
+                "n_treino_minuendo": int(ma["n_treino"]), "n_atributos_minuendo": int(ma["n_atributos"]),
+                "n_treino_subtraendo": int(sb["n_treino"]), "n_atributos_subtraendo": int(sb["n_atributos"]),
+            }
+            for m in METRICAS:
+                linha.update({f"{m}_minuendo": ma[m], f"{m}_subtraendo": sb[m],
+                              f"{m}_diferenca_pp": (ma[m] - sb[m]) * 100})
+            for c in ("tempo_treino_s", "tempo_predicao_s", "tempo_total_s"):
+                linha.update({f"{c}_minuendo": ma[c], f"{c}_subtraendo": sb[c]})
+            linha["razao_tempo_total_minuendo_sobre_subtraendo"] = (
+                ma["tempo_total_s"] / sb["tempo_total_s"] if sb["tempo_total_s"] > 0 else np.nan)
+            linhas.append(linha)
+    return pd.DataFrame(linhas)
 
 def exportar_tabela(df: pd.DataFrame, nome: str) -> None:
     RESULTADOS_DIR.mkdir(parents=True, exist_ok=True)
@@ -425,7 +534,7 @@ def _rotular_finais(ax, pontos, log: bool) -> None:
                 fontsize=9, fontweight="bold", va="center", ha="left")
 
 
-def _plot_linhas(ax, tab, coluna, log=False, formato=_fmt, piso=None) -> None:
+def _plot_linhas(ax, tab, coluna, log=False, formato=_fmt, piso=None, ylim=None) -> None:
     """Uma linha por algoritmo: `coluna` × nº de registros de treinamento (eixo x proporcional)."""
     tamanhos = _tamanhos(tab)
     pontos, todos = [], []
@@ -452,9 +561,11 @@ def _plot_linhas(ax, tab, coluna, log=False, formato=_fmt, piso=None) -> None:
         ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}".replace(".", ",")))
         ax.yaxis.set_minor_formatter(NullFormatter())
     else:
-        lo, hi = min(todos), max(todos)
-        amp = max(hi - lo, 0.01)
-        ax.set_ylim(lo - 0.25 * amp, hi + 0.25 * amp)  # eixo recortado: indicado no rodapé
+        if ylim is None:
+            lo, hi = min(todos), max(todos)
+            amp = max(hi - lo, 0.01)
+            ylim = (lo - 0.25 * amp, hi + 0.25 * amp)  # eixo recortado: indicado no rodapé
+        ax.set_ylim(*ylim)
         ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
         _eixo_virgula(ax, "y", 3)
     _rotular_finais(ax, pontos, log)
@@ -784,18 +895,164 @@ def fig_atr_precisao_recall(tab, rodape) -> None:
     salvar(fig, FIG_COMPARATIVOS, "F_precisao_vs_recall.png",
            rodape + "\nSetas: E4 → E5. Eixos recortados na região dos dados; linhas tracejadas = F1 constante.")
 
+# ───────── ANÁLISE C — TAMANHO × ATRIBUTOS (E4, E5, E8, E9) ─────────
+def grade_c() -> dict:
+    """Grade 2 × 2 {(configuração, n_treino): experimento}; falha se estiver incompleta."""
+    grade = {(EXPERIMENTOS[e]["config"], EXPERIMENTOS[e]["n_treino"]): e for e in EXPERIMENTOS_C}
+    if len(grade) != 4 or len({c for c, _ in grade}) != 2 or len({n for _, n in grade}) != 2:
+        raise ErroValidacao(f"A grade 2 × 2 (tamanho × atributos) da análise C está incompleta: {sorted(grade.items())}")
+    return grade
+
+
+def _nome_c(exp: str) -> str:
+    cfg = EXPERIMENTOS[exp]
+    return f"{exp} · {_rotulo_tamanho(cfg['n_treino'])} · {cfg['n_atributos']} atributos"
+
+
+def _hachurar_maior(ax, experimentos) -> None:
+    """Hachura (listras brancas) as barras dos experimentos com a maior amostra de treinamento."""
+    n_max = max(EXPERIMENTOS[e]["n_treino"] for e in experimentos)
+    for container, exp in zip(ax.containers, experimentos):
+        if EXPERIMENTOS[exp]["n_treino"] == n_max:
+            for patch in container.patches:
+                patch.set_hatch("//")
+                patch.set_edgecolor("white")
+                patch.set_linewidth(0.6)
+
+
+def _legenda_c(fig) -> None:
+    n_max = max(EXPERIMENTOS[e]["n_treino"] for e in EXPERIMENTOS_C)
+    handles = [Patch(facecolor=COR_C[e], edgecolor="white",
+                     hatch="//" if EXPERIMENTOS[e]["n_treino"] == n_max else None, label=_nome_c(e))
+               for e in EXPERIMENTOS_C]
+    fig.legend(handles=handles, title="Experimento", loc="outside lower center", ncol=2, frameon=False)
+
+
+def montar_rodape_c(tab, grade, n_cura, n_obito, semente) -> str:
+    partes = []
+    for n in sorted({n for _, n in grade}):
+        h = tab.loc[tab["experimento"] == grade[("completa", n)], "hash_amostra"].iloc[0]
+        partes.append(f"{_milhar(n)} (amostra {h})")
+    atributos = " e ".join(str(a) for a in sorted({EXPERIMENTOS[e]["n_atributos"] for e in EXPERIMENTOS_C}, reverse=True))
+    n_teste = int(tab["n_teste"].iloc[0])
+    return (f"Treino: {' e '.join(partes)} registros; {atributos} atributos; semente {semente} · "
+            f"Teste: {_milhar(n_teste)} registros ({_milhar(n_cura)} cura; {_milhar(n_obito)} óbito).\n"
+            "Precisão, recall e F1-score referem-se à classe óbito. Execução única por experimento, sem teste "
+            "de significância estatística; as diferenças são descritivas.")
+
+
+def fig_c_f1(tab, rodape) -> None:
+    """C1 — F1-score dos quatro experimentos, por algoritmo."""
+    fig, ax = plt.subplots(figsize=(9.8, 5.2), constrained_layout=True)
+    dados = tab[["experimento", "modelo", "f1"]].rename(columns={"f1": "valor"})
+    _barras_agrupadas(ax, dados, "modelo", "valor", "experimento", MODELOS, EXPERIMENTOS_C, COR_C, tam_rotulo=8)
+    _hachurar_maior(ax, EXPERIMENTOS_C)
+    _eixo_metrica(ax, "F1-score (classe óbito)")
+    fig.suptitle("F1-score por algoritmo: tamanho da amostra e conjunto de atributos")
+    _legenda_c(fig)
+    salvar(fig, FIG_E9, "C1_f1_E4_E5_E8_E9.png", rodape)
+
+
+def fig_c_remocao(tab, grade, rodape) -> None:
+    """C2 — Diferença de F1 (pontos percentuais) ao retirar os atributos, em cada tamanho."""
+    idx = tab.set_index(["modelo", "experimento"])
+    tamanhos = sorted({n for _, n in grade})
+    linhas, contrastes = [], []
+    for n in tamanhos:
+        com, sem = grade[("completa", n)], grade[("reduzida", n)]
+        rotulo = f"{com} − {sem} ({_rotulo_tamanho(n)} registros)"
+        contrastes.append(rotulo)
+        for modelo in MODELOS:
+            dif = (idx.loc[(modelo, com), "f1"] - idx.loc[(modelo, sem), "f1"]) * 100
+            linhas.append({"modelo": modelo, "contraste": rotulo, "variacao_pp": dif})
+    n_com = EXPERIMENTOS[grade[("completa", tamanhos[0])]]["n_atributos"]
+    n_sem = EXPERIMENTOS[grade[("reduzida", tamanhos[0])]]["n_atributos"]
+    cor = "#7F7F7F"
+    fig, ax = plt.subplots(figsize=(8.8, 5.0), constrained_layout=True)
+    _barras_agrupadas(ax, pd.DataFrame(linhas), "modelo", "variacao_pp", "contraste", MODELOS, contrastes,
+                      {c: cor for c in contrastes}, formato=lambda v: f"{v:+.1f}".replace(".", ","))
+    for patch in ax.containers[-1].patches:  # contraste da maior amostra: hachurado
+        patch.set_hatch("//")
+        patch.set_edgecolor("white")
+        patch.set_linewidth(0.6)
+    ax.axhline(0, color="#333333", lw=0.9)
+    ax.set_xlabel("")
+    ax.set_ylabel("Diferença de F1-score (pontos percentuais)")
+    _eixo_virgula(ax, "y", 0)
+    ax.grid(axis="x", visible=False)
+    ax.margins(y=0.15)
+    ax.set_title(f"Diferença = F1 com {n_com} atributos − F1 com {n_sem}; "
+                 f"positivo = F1 maior com {n_com} atributos",
+                 fontsize=9.5, fontweight="normal", color="#444444")
+    fig.suptitle("Variação do F1-score após a retirada de HOSPITAL, UTI e SUPORT_VEN")
+    handles = [Patch(facecolor=cor, edgecolor="white", hatch="//" if i == len(contrastes) - 1 else None, label=c)
+               for i, c in enumerate(contrastes)]
+    fig.legend(handles=handles, title="Contraste", loc="outside lower center", ncol=2, frameon=False)
+    salvar(fig, FIG_E9, "C2_remocao_atributos_f1_pp.png", rodape)
+
+
+def fig_c_tamanho(tab, grade, rodape) -> None:
+    """C3 — F1-score com a amostra menor e a maior, em painéis separados por conjunto de atributos."""
+    tamanhos = sorted({n for _, n in grade})
+    valores = tab["f1"].to_numpy(float)
+    amp = max(valores.max() - valores.min(), 0.01)
+    ylim = (valores.min() - 0.25 * amp, valores.max() + 0.25 * amp)  # mesma escala nos dois painéis
+    fig, axes = plt.subplots(1, 2, figsize=(12.2, 5.0), constrained_layout=True)
+    for ax, config in zip(axes, ("completa", "reduzida")):
+        exps = [grade[(config, n)] for n in tamanhos]
+        _plot_linhas(ax, tab[tab["experimento"].isin(exps)], "f1", ylim=ylim)
+        ax.set_title(f"{EXPERIMENTOS[exps[0]]['n_atributos']} atributos ({' → '.join(exps)})")
+        ax.set_ylabel("F1-score (classe óbito)")
+    fig.suptitle("Efeito do tamanho da amostra de treinamento ("
+                 + " → ".join(_rotulo_tamanho(n) for n in tamanhos) + " registros)")
+    _legenda_linhas(fig)
+    salvar(fig, FIG_E9, "C3_efeito_tamanho_amostra_f1.png",
+           rodape + "\nEixo y recortado na faixa dos dados, com a mesma escala nos dois painéis.")
+
+
+def fig_c_custo(tab, rodape) -> None:
+    """C4 — Custo computacional (treinamento, predição e total) de E8 e E9, em escala log."""
+    par = list(PAR_CUSTO_C)
+    piso = 0.05
+    paineis = [("tempo_treino_s", "Treinamento"), ("tempo_predicao_s", "Predição (teste completo)"),
+               ("tempo_total_s", "Total")]
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.8), constrained_layout=True)
+    for ax, (coluna, titulo) in zip(axes, paineis):
+        dados = (tab[tab["experimento"].isin(par)][["experimento", "modelo", coluna]]
+                 .rename(columns={coluna: "valor"}).copy())
+        dados["plot"] = dados["valor"].clip(lower=piso)
+        _barras_agrupadas(ax, dados, "modelo", "plot", "experimento", MODELOS, par, COR_C,
+                          formato=_fmt_tempo, coluna_rotulo="valor")
+        ax.set_yscale("log")
+        ax.set_ylim(piso / 2, dados["plot"].max() * 4)
+        ax.yaxis.set_major_locator(LogLocator(base=10, subs=(1.0, 3.0)))
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}".replace(".", ",")))
+        ax.yaxis.set_minor_formatter(NullFormatter())
+        ax.set_title(titulo)
+        ax.set_xlabel("")
+        ax.set_ylabel("Tempo (s, escala logarítmica)")
+        ax.grid(axis="x", visible=False)
+    n = EXPERIMENTOS[par[0]]["n_treino"]
+    fig.suptitle(f"Custo computacional com {_rotulo_tamanho(n)} registros de treinamento: {par[0]} × {par[1]}")
+    _legenda(fig, {e: COR_C[e] for e in par}, "Experimento", {e: _nome_c(e) for e in par})
+    salvar(fig, FIG_E9, "C4_custo_computacional_E8_E9.png",
+           rodape + "\nEscala logarítmica: o comprimento das barras não é proporcional ao tempo; "
+                    "use os valores rotulados. Tempos registrados com resolução de 0,1 s.")
 
 # ───────────────────────────── PRINCIPAL ─────────────────────────────
 def main() -> int:
     parser = argparse.ArgumentParser(description="Tabelas e gráficos dos experimentos E4–E8.")
-    parser.add_argument("--analise", choices=["tamanho", "atributos", "todas"], default="tamanho",
-                        help="tamanho (padrão): E6, E4, E7, E8 | atributos: E4 × E5 | todas")
+    parser.add_argument("--analise", choices=["tamanho", "atributos", "e9", "todas"], default="tamanho",
+                        help="tamanho (padrão): E6, E4, E7, E8 | atributos: E4 × E5 | "
+                             "e9: E4, E5, E8, E9 | todas")
     args = parser.parse_args()
 
     try:
         bruto = carregar_execucoes()
         sel, avisos = selecionar_execucoes(bruto)
         validar(sel)
+        avisos += validar_atributos(sel)
+        grade = grade_c()
         matrizes = extrair_matrizes(sel)
         n_cura, n_obito = validar_matrizes(sel, matrizes)
     except ErroValidacao as erro:
@@ -817,6 +1074,9 @@ def main() -> int:
     exportar_tabela(tabela, "consolidado_experimentos.csv")
     exportar_tabela(tab_tam, "tabela_tamanho_amostra.csv")
     exportar_tabela(tab_atr, "tabela_E4_vs_E5.csv")
+    exportar_tabela(tabela_par(tabela, "E8", "E9"), "tabela_E8_vs_E9.csv")      # diferença = E8 − E9
+    exportar_tabela(tabela_par(tabela, "E9", "E5"), "tabela_E5_vs_E9.csv")      # diferença = E9 − E5
+    exportar_tabela(tabela_comparativo(tabela), "tabela_comparativo_E4_E5_E8_E9.csv")
 
     configurar_estilo()
     semente = int(sel["semente"].iloc[0])
@@ -855,7 +1115,16 @@ def main() -> int:
         fig_atr_custo(tab_b, rodape)
         fig_atr_precisao_recall(tab_b, rodape)
 
-    print(f"\nConcluído: 3 tabelas CSV + {len(GERADOS)} figuras PNG.")
+    if args.analise in ("e9", "todas"):
+        tab_c = tabela[tabela["experimento"].isin(EXPERIMENTOS_C)]
+        rodape = montar_rodape_c(tab_c, grade, n_cura, n_obito, semente)
+        print(f"\nAnálise C — {', '.join(EXPERIMENTOS_C)}: figuras em {FIG_E9.relative_to(BASE_DIR)}/")
+        fig_c_f1(tab_c, rodape)
+        fig_c_remocao(tab_c, grade, rodape)
+        fig_c_tamanho(tab_c, grade, rodape)
+        fig_c_custo(tab_c[tab_c["experimento"].isin(PAR_CUSTO_C)], rodape)
+
+    print(f"\nConcluído: 6 tabelas CSV + {len(GERADOS)} figuras PNG.")
     return 0
 
 

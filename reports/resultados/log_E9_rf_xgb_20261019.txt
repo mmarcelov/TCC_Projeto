@@ -1,0 +1,133 @@
+Treino completo: (916455, 51) | Teste: (229114, 51)
+Hash do conjunto de teste: ea1d1b0329ce (deve ser o mesmo em todas as execuções)
+Hash do conjunto de teste confere com o registrado: ea1d1b0329ce
+
+Reconstruindo a amostra do E4 (50.000) com a função original de models.py...
+Amostra de treino: 50000 registros de 916455
+Proporção do alvo na amostra:
+TARGET
+0    0.66544
+1    0.33456
+Name: proportion, dtype: float64
+Hash da amostra de 50 mil confere com o E4: ee971fa098f9
+
+Verificando as amostras...
+  E6: 25000 registros, sem duplicatas, alinhados, 51 atributos, proporção ok
+  E4: 50000 registros, sem duplicatas, alinhados, 51 atributos, proporção ok
+  E7: 75000 registros, sem duplicatas, alinhados, 51 atributos, proporção ok
+  E8: 100000 registros, sem duplicatas, alinhados, 51 atributos, proporção ok
+Aninhamento:
+  E6 ⊂ E4: ok
+  E4 ⊂ E7: ok
+  E7 ⊂ E8: ok
+
+Resumo das amostras (E6 ⊂ E4 ⊂ E7 ⊂ E8):
+amostra      n         hash  n_cura  n_obito  pct_obito  dif_vs_treino_pp
+     E6  25000 4ec92425018e   16636     8364     33.456            -0.001
+     E4  50000 ee971fa098f9   33272    16728     33.456            -0.001
+     E7  75000 26fc93c62291   49908    25092     33.456            -0.001
+     E8 100000 0eb33db8bae4   66544    33456     33.456            -0.001
+Proporção de óbitos no treino completo: 33.457%
+
+Hash da amostra E8 reconstruída confere: 0eb33db8bae4
+
+Aplicando a configuração reduzida (mesma função usada no E5)...
+Removendo 6 colunas de gravidade/atendimento: ['HOSPITAL', 'UTI', 'SUPORT_VEN_1', 'SUPORT_VEN_2', 'SUPORT_VEN_3', 'SUPORT_VEN_9']
+Removendo 6 colunas de gravidade/atendimento: ['HOSPITAL', 'UTI', 'SUPORT_VEN_1', 'SUPORT_VEN_2', 'SUPORT_VEN_3', 'SUPORT_VEN_9']
+  Removidas exatamente as 6 colunas esperadas; restam 45 atributos.
+  Colunas de treino e teste idênticas e na mesma ordem; registros e alvo inalterados.
+  Treino reduzido (100000, 45) | teste reduzido (229114, 45).
+  Atributos idênticos (nomes e ordem) aos registrados no E5.
+  Proporção de óbitos na amostra: 33.456% (treino completo: 33.457%)
+  Hash do conteúdo do treino reduzido: 950c22fb714e (deve ser igual em todas as execuções)
+
+Todas as verificações críticas passaram.
+
+############################################################
+E9 — sem_gravidade_100k | treino 100000 | teste 229114 | atributos 45
+hash da amostra 0eb33db8bae4 | semente 42 | run_id 20261019_211827
+arquivo de resultados: amostras_E9_100000_45atributos.csv
+############################################################
+
+>>> E9 | Random Forest: treinando com 100000 registros...
+    treino concluído em 1.8 s
+  predição: 20000/229114
+  predição: 40000/229114
+  predição: 60000/229114
+  predição: 80000/229114
+  predição: 100000/229114
+  predição: 120000/229114
+  predição: 140000/229114
+  predição: 160000/229114
+  predição: 180000/229114
+  predição: 200000/229114
+  predição: 220000/229114
+  predição: 229114/229114
+
+
+==================================================
+Resultados: Random Forest [E9]
+==================================================
+Acurácia:  0.6658
+Precisão:  0.5004
+Recall:    0.6724
+F1-score:  0.5738
+
+Matriz de confusão:
+[[100990  51469]
+ [ 25109  51546]]
+
+Relatório completo:
+              precision    recall  f1-score   support
+
+           0       0.80      0.66      0.73    152459
+           1       0.50      0.67      0.57     76655
+
+    accuracy                           0.67    229114
+   macro avg       0.65      0.67      0.65    229114
+weighted avg       0.70      0.67      0.67    229114
+
+
+>>> E9 | XGBoost: treinando com 100000 registros...
+    treino concluído em 0.6 s
+  predição: 20000/229114
+  predição: 40000/229114
+  predição: 60000/229114
+  predição: 80000/229114
+  predição: 100000/229114
+  predição: 120000/229114
+  predição: 140000/229114
+  predição: 160000/229114
+  predição: 180000/229114
+  predição: 200000/229114
+  predição: 220000/229114
+  predição: 229114/229114
+
+
+==================================================
+Resultados: XGBoost [E9]
+==================================================
+Acurácia:  0.6632
+Precisão:  0.4975
+Recall:    0.6653
+F1-score:  0.5693
+
+Matriz de confusão:
+[[100946  51513]
+ [ 25656  50999]]
+
+Relatório completo:
+              precision    recall  f1-score   support
+
+           0       0.80      0.66      0.72    152459
+           1       0.50      0.67      0.57     76655
+
+    accuracy                           0.66    229114
+   macro avg       0.65      0.66      0.65    229114
+weighted avg       0.70      0.66      0.67    229114
+
+
+Resumo E9 (última execução 'ok' de cada modelo):
+experimento        modelo  n_treino  n_teste  n_atributos  tempo_treino_s  tempo_predicao_s  acuracia  precisao   recall       f1 status
+         E9 Random Forest    100000   229114           45             1.8               0.8  0.665765  0.500374 0.672441 0.573785     ok
+         E9       XGBoost    100000   229114           45             0.6               0.2  0.663185  0.497493 0.665306 0.569290     ok
