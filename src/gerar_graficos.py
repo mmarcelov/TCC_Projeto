@@ -51,10 +51,9 @@ CONFIGURACOES = {
     "reduzida": "Reduzida (sem HOSPITAL, UTI e SUPORT_VEN)",
 }
 
-# Um experimento = uma entrada. Para incorporar um novo experimento no futuro (ex.: E9 com
-# 150 mil registros), basta acrescentar uma linha aqui DEPOIS que o CSV existir, por exemplo:
-#   "E9": {"arquivo": "amostras_E9_150000.csv", "n_treino": 150000, "n_atributos": 51, "config": "completa"},
-# As figuras de tamanho usam todos os experimentos de configuração "completa" ordenados por n_treino.
+# Cada experimento possui uma entrada com seu CSV, tamanho de treino e configuração.
+# A análise de tamanho utiliza os experimentos com configuração "completa".
+# A análise E9 compara as configurações completa e reduzida com 50 mil e 100 mil registros.
 EXPERIMENTOS = {
     "E4": {"arquivo": "equiparidade_20261009_112030_E4.csv", "n_treino": 50000, "n_atributos": 51, "config": "completa"},
     "E5": {"arquivo": "equiparidade_20261009_102402_E5.csv", "n_treino": 50000, "n_atributos": 45, "config": "reduzida"},
