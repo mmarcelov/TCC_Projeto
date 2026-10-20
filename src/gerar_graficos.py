@@ -1,15 +1,18 @@
 """
-gerar_graficos.py — Tabelas e gráficos dos experimentos E4–E8 (TCC SRAG/COVID-19, 2021).
+gerar_graficos.py — Tabelas e gráficos dos experimentos E4–E9 (TCC SRAG/COVID-19, 2021).
 
 Lê os CSVs registrados em reports/resultados/. NÃO treina modelos e NÃO altera resultados.
 
-Duas análises, mantidas separadas:
-  tamanho   : E6, E4, E7, E8 — mesmos 51 atributos; varia só o nº de registros de treinamento
+Três análises:
+  tamanho   : E6, E4, E7, E8 — 51 atributos; varia o número de registros de treinamento
   atributos : E4 × E5        — 50 mil registros; 51 × 45 atributos
+  e9       : E4, E5, E8, E9 — compara tamanho do treinamento e conjunto de atributos
 
 Uso (na raiz do repositório):
-    python src/gerar_graficos.py                      # tabelas + análise de tamanho (padrão)
-    python src/gerar_graficos.py --analise atributos  # tabelas + gráficos E4 × E5
+    python src/gerar_graficos.py
+    python src/gerar_graficos.py --analise tamanho
+    python src/gerar_graficos.py --analise atributos
+    python src/gerar_graficos.py --analise e9
     python src/gerar_graficos.py --analise todas
 """
 import argparse
@@ -1041,7 +1044,7 @@ def fig_c_custo(tab, rodape) -> None:
 
 # ───────────────────────────── PRINCIPAL ─────────────────────────────
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Tabelas e gráficos dos experimentos E4–E8.")
+    parser = argparse.ArgumentParser(description="Tabelas e gráficos dos experimentos E4–E9.")
     parser.add_argument("--analise", choices=["tamanho", "atributos", "e9", "todas"], default="tamanho",
                         help="tamanho (padrão): E6, E4, E7, E8 | atributos: E4 × E5 | "
                              "e9: E4, E5, E8, E9 | todas")
